@@ -1,0 +1,42 @@
+{
+  "name": "@cmsopensource/codejson-core",
+  "version": "0.1.0",
+  "description": "Schema, validation, and assembly logic for code.json.",
+  "repository": { "type": "git", "url": "git+https://github.com/DSACMS/codejson-core.git" },
+  "homepage": "https://github.com/DSACMS/codejson-core#readme",
+  "bugs": { "url": "https://github.com/DSACMS/codejson-core/issues" },
+  "license": "CC0-1.0",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "files": ["dist"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": { "access": "public" },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "generate-schema": "bun run scripts/generate-schema.ts",
+    "prepublishOnly": "bun run typecheck && bun run test && bun run build"
+  },
+  "dependencies": {
+    "zod": "^4.2.1",
+    "zod-validation-error": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.17",
+    "eslint": "^9.39.2",
+    "json-schema-to-zod": "^2.7.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.54.0"
+  }
+}
