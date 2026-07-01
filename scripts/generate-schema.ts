@@ -4,8 +4,13 @@ import prettier from "prettier";
 import { type JsonSchema, jsonSchemaToZod } from "json-schema-to-zod";
 import { getLatestSchemaVersion } from "./get-latest-schema.js";
 
-const SCHEMA_BASE_URL = "https://raw.githubusercontent.com/DSACMS/gov-codejson/refs/heads/main/schemas/cms";
-const filePath = "src/schema/CodeJSONSchema.ts";
+const RAW_BASE = "https://raw.githubusercontent.com/DSACMS/gov-codejson/refs/heads/main";
+
+// one entry per schema variant. add a new agency here + a preset in src/profiles/ to support it.
+const VARIANTS = [
+  { name: "neutral", dir: "schemas", out: "src/schema/neutral.ts" },
+  { name: "cms", dir: "schemas/cms", out: "src/schema/cms.ts" },
+] as const;
 
 // widen .url() to allow "" too, since code.json uses empty strings for N/A urls
 function allowEmptyUrls(zodCode: string): string {
@@ -53,12 +58,12 @@ async function formatFile(filePath: string) {
   fs.writeFileSync(absolutePath, formatted);
 }
 
-async function generateSchema() {
-  const schemaVersion = await getLatestSchemaVersion();
-  console.log(`Latest schema version: ${schemaVersion}`);
+async function generateVariant(variant: (typeof VARIANTS)[number]) {
+  const schemaVersion = await getLatestSchemaVersion(variant.dir);
+  console.log(`[${variant.name}] latest schema version: ${schemaVersion}`);
 
-  const schemaURL = `${SCHEMA_BASE_URL}/schema-${schemaVersion}.json`;
-  console.log(`Fetching JSON schema from GitHub...`);
+  const schemaURL = `${RAW_BASE}/${variant.dir}/schema-${schemaVersion}.json`;
+  console.log(`[${variant.name}] fetching JSON schema from GitHub...`);
   const response = await fetch(schemaURL);
 
   if (!response.ok) {
@@ -69,13 +74,14 @@ async function generateSchema() {
 
   const jsonSchema = (await response.json()) as JsonSchema;
 
-  console.log(`Converting JSON schema to Zod...`);
+  console.log(`[${variant.name}] converting JSON schema to Zod...`);
   let zodSourceCode = jsonSchemaToZod(jsonSchema);
 
   zodSourceCode = allowEmptyUrls(zodSourceCode);
 
   const fileContent = `
         // DO NOT EDIT - AUTOMATICALLY GENERATED FILE!!!
+        // Variant: ${variant.name}
         // Schema Version: ${schemaVersion}
 
         import { z } from "zod";
@@ -87,11 +93,17 @@ async function generateSchema() {
         export type CodeJSON = z.infer<typeof CodeJSONSchema>;
     `;
 
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, fileContent);
-  console.log(`File written to ${filePath}...`);
+  fs.mkdirSync(path.dirname(variant.out), { recursive: true });
+  fs.writeFileSync(variant.out, fileContent);
+  console.log(`[${variant.name}] file written to ${variant.out}...`);
 
-  await formatFile(filePath);
+  await formatFile(variant.out);
+}
+
+async function generateSchema() {
+  for (const variant of VARIANTS) {
+    await generateVariant(variant);
+  }
   console.log(`Schema generation complete!`);
 }
 

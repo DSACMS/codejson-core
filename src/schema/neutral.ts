@@ -1,9 +1,10 @@
 // DO NOT EDIT - AUTOMATICALLY GENERATED FILE!!!
-// Schema Version: 2.1.0
+// Variant: neutral
+// Schema Version: 2.0.0
 
 import { z } from "zod";
 
-export const SCHEMA_VERSION = "2.1.0";
+export const SCHEMA_VERSION = "2.0.0";
 
 export const CodeJSONSchema = z
   .object({
@@ -15,13 +16,6 @@ export const CodeJSONSchema = z
     description: z
       .string()
       .describe("A one or two sentence description of the software."),
-    longDescription: z
-      .string()
-      .min(150)
-      .max(10000)
-      .describe(
-        "Provide longer description of the software, between 150 and 10000 chars. It is meant to provide an overview of the capabilities of the software for a potential user.",
-      ),
     status: z
       .enum([
         "Ideation",
@@ -112,9 +106,9 @@ export const CodeJSONSchema = z
         "An object containing description of the usage/restrictions regarding the release",
       ),
     organization: z
-      .literal("Centers for Medicare & Medicaid Services")
+      .string()
       .describe(
-        "The organization or component within the agency to which the releases listed belong.",
+        "The organization or component within the agency to which the releases listed belong. For example, '18F' or 'Navy'.",
       ),
     repositoryURL: z
       .string()
@@ -123,17 +117,6 @@ export const CodeJSONSchema = z
       .describe(
         "The URL of the public release repository for open source repositories. This field is not required for repositories that are only available as government-wide reuse or are closed (pursuant to one of the exemptions). It can be listed as 'private' for repositories that are closed.",
       ),
-    repositoryHost: z
-      .enum([
-        "github.com/CMSgov",
-        "github.com/CMS-Enterprise",
-        "github.com/Enterprise-CMCS",
-        "github.com/DSACMS",
-        "github.com/MeasureAuthoringTool",
-        "github.cms.gov",
-        "CCSQ GitHub",
-      ])
-      .describe("Location where source code is hosted"),
     repositoryVisibility: z
       .enum(["public", "private"])
       .describe("Visibility of repository"),
@@ -181,37 +164,6 @@ export const CodeJSONSchema = z
       .describe(
         "Measures frequency of code reuse in various forms. (e.g. forks, downloads, clones)",
       ),
-    platforms: z
-      .array(
-        z.enum(["web", "windows", "mac", "linux", "ios", "android", "other"]),
-      )
-      .refine(
-        (arr) => arr.every((item, i) => arr.indexOf(item) == i),
-        "All items must be unique!",
-      )
-      .describe("Platforms supported by the project"),
-    categories: z
-      .array(z.string())
-      .refine(
-        (arr) => arr.every((item, i) => arr.indexOf(item) == i),
-        "All items must be unique!",
-      )
-      .describe(
-        "Categories the project belongs to. Select from: https://yml.publiccode.tools/categories-list.html",
-      ),
-    softwareType: z
-      .enum([
-        "standalone/mobile",
-        "standalone/iot",
-        "standalone/desktop",
-        "standalone/web",
-        "standalone/backend",
-        "standalone/other",
-        "addon",
-        "library",
-        "configurationFiles",
-      ])
-      .describe("Type of software"),
     languages: z
       .array(z.string())
       .refine(
@@ -361,96 +313,9 @@ export const CodeJSONSchema = z
       .describe(
         "The software's ID in the AI Use Case Inventory. If the software is not currently listed in the inventory, enter '0'.",
       ),
-    localisation: z
-      .boolean()
-      .describe("Indicates if the project supports multiple languages"),
-    repositoryType: z
-      .enum([
-        "package",
-        "website",
-        "standards",
-        "libraries",
-        "data",
-        "application",
-        "tools",
-        "APIs",
-      ])
-      .describe("Purpose and functionality of the repository"),
-    userInput: z.boolean().describe("Does the software accept user input?"),
-    fismaLevel: z
-      .enum(["low", "moderate", "high"])
-      .describe(
-        "Level of security categorization assigned to an information system under the Federal Information Security Modernization Act (FISMA): https://security.cms.gov/learn/federal-information-security-modernization-act-fisma",
-      ),
-    group: z
-      .string()
-      .describe("Home Department / Org / Group associated with the project"),
-    projects: z
-      .array(z.string())
-      .refine(
-        (arr) => arr.every((item, i) => arr.indexOf(item) == i),
-        "All items must be unique!",
-      )
-      .describe(
-        "Project(s) that is associated or related to the repository, if any (e.g. Bluebutton, MPSM)",
-      ),
-    systems: z
-      .array(z.string())
-      .refine(
-        (arr) => arr.every((item, i) => arr.indexOf(item) == i),
-        "All items must be unique!",
-      )
-      .describe(
-        "CMS systems that the repository interfaces with or depends on, if any (e.g. IDR, PECOS)",
-      )
-      .optional(),
-    subsetInHealthcare: z
-      .array(
-        z.enum([
-          "policy",
-          "operational",
-          "medicare",
-          "medicaid",
-          "SNAP",
-          "TANF",
-          "human-benefit-services",
-        ]),
-      )
-      .refine(
-        (arr) => arr.every((item, i) => arr.indexOf(item) == i),
-        "All items must be unique!",
-      )
-      .describe("Healthcare-related subset"),
-    userType: z
-      .array(
-        z.enum([
-          "providers",
-          "patients",
-          "government",
-          "applicants",
-          "beneficiaries",
-          "enrollees",
-        ]),
-      )
-      .refine(
-        (arr) => arr.every((item, i) => arr.indexOf(item) == i),
-        "All items must be unique!",
-      )
-      .describe("Types of users who interact with the software"),
-    maturityModelTier: z
-      .union([
-        z.literal(0),
-        z.literal(1),
-        z.literal(2),
-        z.literal(3),
-        z.literal(4),
-      ])
-      .describe(
-        "Maturity model tier according to the CMS Open Source Repository Maturity Model Framework: https://github.com/DSACMS/repo-scaffolder/blob/main/maturity-model-tiers.md",
-      ),
   })
-  .strict()
-  .describe("A metadata standard for software repositories of CMS")
+  .catchall(z.any())
+  .describe("A metadata standard for software repositories")
   .refine(
     (data) => {
       const usageTypes = data.permissions?.usageType ?? [];
