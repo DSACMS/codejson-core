@@ -5,7 +5,6 @@ import {
   filterValidFields as filterValidFieldsWith,
   migrateLegacyFields,
 } from "./normalize.js";
-import { type AssembleOptions as AssembleOptionsGeneric } from "./assemble.js";
 
 // ── neutral schema + types (generated, version-pinned) ────────────────────
 export {
@@ -21,9 +20,6 @@ export { baselineCodeJSON } from "./baselines/neutral.js";
 export const validateCodeJSON = neutralProfile.validate;
 export const isValidCodeJSON = neutralProfile.isValid;
 export const assembleCodeJSON = neutralProfile.assemble;
-
-/** options for the default, neutral-bound `assembleCodeJSON`. */
-export type AssembleOptions = AssembleOptionsGeneric<CodeJSON>;
 
 // ── normalization (neutral-bound; baseline pre-injected) ──────────────────
 export const filterValidFields = (

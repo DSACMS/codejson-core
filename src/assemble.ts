@@ -3,14 +3,13 @@ import { validateWith } from "./validation.js";
 import { CodeJSONValidationError } from "./errors.js";
 import { filterValidFields, migrateLegacyFields } from "./normalize.js";
 
-export interface AssembleOptions<T> {
-  agencyDefaults?: Partial<T>; // org-level defaults from the caller
+export interface AssembleOptions {
   isArchived?: boolean;
   now?: () => Date;
 }
 
-// the fields the derived logic reads/writes. any new field that we can derive from via a caller has to be defined here
-// we know these fields are derived from automated-codejson-generator
+// fields whose final value needs selection/synthesis logic, not a plain override.
+// everything a caller sends that IS a plain override just flows through the spread below and does NOT belong here.
 interface DerivedView {
   repositoryURL?: string;
   feedbackMechanism?: string;
@@ -23,16 +22,16 @@ interface DerivedView {
 }
 
 // merge then validate everything into one valid code.json
-// baseline -> agency defaults -> cleaned existing file -> freshly observed -> derived (later wins)
+// baseline -> cleaned existing file -> freshly observed -> derived (later wins)
 // this is meant to be a pure function with no i/o
 export function assembleWith<T extends Record<string, unknown>>(
   schema: z.ZodType<T>,
   baseline: Partial<T>,
   observed: Partial<T>,
   existing: T | null,
-  options: AssembleOptions<T> = {},
+  options: AssembleOptions = {},
 ): T {
-  const { agencyDefaults, isArchived = false, now } = options;
+  const { isArchived = false, now } = options;
 
   // step 1: prep existing by dropping unknown fields then migrate legacy shapes.
   const cleanedExisting: Partial<T> = existing
@@ -89,7 +88,6 @@ export function assembleWith<T extends Record<string, unknown>>(
   // step 3: merge with precedence (later wins).
   const result = {
     ...baseline,
-    ...agencyDefaults,
     ...cleanedExisting,
     ...observed,
     ...derived,

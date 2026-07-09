@@ -12,7 +12,7 @@ export const cmsBaselineCodeJSON: Partial<CodeJSON> = {
     usageType: [],
     exemptionText: "",
   },
-  organization: undefined,
+  organization: "Centers for Medicare & Medicaid Services",
   repositoryURL: "",
   repositoryHost: undefined,
   repositoryVisibility: undefined,

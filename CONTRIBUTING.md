@@ -26,42 +26,49 @@ TODO: This section helps contributors understand any team structure in the proje
 
 ### Building dependencies
 
-<!--- TODO: This step is often skipped, so don't forget to include the steps needed to install on your platform. If you project can be multi-platform, this is an excellent place for first time contributors to send patches!-->
+This project uses [Bun](https://bun.sh) as its package manager, test runner, and script runner. Install Bun (see the [Bun install docs](https://bun.sh/docs/installation)), then install dependencies from the repository root:
+
+```bash
+bun install
+```
+
+The library targets Node ≥20 and is ESM-only. Its only runtime dependencies are `zod` and `zod-validation-error`.
 
 ### Building the Project
 
-<!--- TODO: Be sure to include build scripts and instructions, not just the source code itself! -->
+```bash
+bun run typecheck   # type-check without emitting
+bun run build       # emit ESM JS + .d.ts to dist/ via tsc
+bun test            # run the test suite
+```
+
+`bun run build` uses `tsc -p tsconfig.build.json` to emit `dist/` (the only published artifact). Maintainers can regenerate the committed schema from `gov-codejson` with `bun run generate-schema`.
 
 ### Workflow and Branching
 
-<!--- TODO: Workflow Example
-We follow the [GitHub Flow Workflow](https://guides.github.com/introduction/flow/)
+We follow the [GitHub Flow Workflow](https://guides.github.com/introduction/flow/):
 
 1.  Fork the project
 2.  Check out the `main` branch
 3.  Create a feature branch
 4.  Write code and tests for your change
-5.  From your branch, make a pull request against `{{ cookiecutter.project_org }}/{{ cookiecutter.project_repo_name }}/main`
+5.  From your branch, make a pull request against `DSACMS/codejson-core/main`
 6.  Work with repo maintainers to get your change reviewed
-7.  Wait for your change to be pulled into `{{ cookiecutter.project_org }}/{{ cookiecutter.project_repo_name }}/main`
+7.  Wait for your change to be pulled into `DSACMS/codejson-core/main`
 8.  Delete your feature branch
--->
 
-<!--
 ### Testing Conventions
 
-TODO: Discuss where tests can be found, how they are run, and what kind of tests/coverage strategy and goals the project has.
--->
+Tests live in `tests/` and run with Bun's built-in runner (`bun:test`) via `bun test`. New behavior should ship with tests — validation changes belong in the validation suite, and assembly/merge changes in the assembly suite. Please make sure `bun test`, `bun run typecheck`, and `bun run lint` all pass before opening a pull request.
 
 ### Coding Style and Linters
 
-<!--- TODO: HIGHLY ENCOURAGED. Specific tools will vary between different languages/frameworks (e.g. Black for python, eslint for JavaScript, etc...)
+- **Linting:** [ESLint](https://eslint.org/) with `typescript-eslint` (`eslint.config.js`). Run `bun run lint`.
+- **Formatting:** [Prettier](https://prettier.io/) (`.prettierrc`). Run `bun run format`.
+- **Language:** TypeScript in `strict` mode.
+- **Versioning:** the project follows [Semantic Versioning](https://semver.org/).
 
-1. Mention any style guides you adhere to (e.g. pep8, etc...)
-2. Mention any linters your project uses (e.g. flake8, jslint, etc...)
-3. Mention any naming conventions your project uses (e.g. Semantic Versioning, CamelCasing, etc...)
-4. Mention any other content guidelines the project adheres to (e.g. plainlanguage.gov, etc...)
--->
+Linters and tests run on each commit, so please run them locally before committing.
 
 ### Writing Issues
 
@@ -158,7 +165,7 @@ authorship metadata will be preserved.
 
 <!-- TODO: What cadence does your project ship new releases? (e.g. one-time, ad-hoc, periodically, upon merge of new patches) Who does so? Below is a sample template you can use to provide this information.
 
-{{ cookiecutter.project_repo_name }} will see regular updates and new releases. This section describes the general guidelines around how and when a new release is cut.
+codejson-core will see regular updates and new releases. This section describes the general guidelines around how and when a new release is cut.
 
 -->
 
@@ -180,7 +187,7 @@ authorship metadata will be preserved.
 
 <!-- ### Versioning
 
-{{ cookiecutter.project_repo_name }} uses [Semantic Versioning](https://semver.org/). Each release is associated with a [`git tag`](github.com/{{ cookiecutter.project_org }}/{{ cookiecutter.project_repo_name }}/tags) of the form `X.Y.Z`.
+codejson-core uses [Semantic Versioning](https://semver.org/). Each release is associated with a [`git tag`](github.com/DSACMS/codejson-core/tags) of the form `X.Y.Z`.
 
 Given a version number in the `MAJOR.MINOR.PATCH` (eg., `X.Y.Z`) format, here are the differences in these terms:
 
@@ -244,7 +251,7 @@ Once an item is moved out of beta, close its Issue and change the text to say 'B
 
 <!-- ### Preparing a Release Candidate
 
-The following steps outline the process to prepare a Release Candidate of {{ cookiecutter.project_repo_name }}. This process makes public the intention and contents of an upcoming release, while allowing work on the next release to continue as usual in `dev`.
+The following steps outline the process to prepare a Release Candidate of codejson-core. This process makes public the intention and contents of an upcoming release, while allowing work on the next release to continue as usual in `dev`.
 
 1. Create a _Release branch_ from the tip of `dev` named `release-x.y.z`, where `x.y.z` is the intended version of the release. This branch will be used to prepare the Release Candidate. For example, to prepare a Release Candidate for `0.5.0`:
 
@@ -298,7 +305,7 @@ Repeat as-needed for subsequent Release Candidates. Note the release branch will
 
 <!-- ### Making a Release
 
-The following steps describe how to make an approved [Release Candidate](#preparing-a-release-candidate) an official release of {{ cookiecutter.project_repo_name }}:
+The following steps describe how to make an approved [Release Candidate](#preparing-a-release-candidate) an official release of codejson-core:
 
 1. **Approved**. Ensure review has been completed and approval granted.
 
@@ -378,7 +385,7 @@ In rare cases, a hotfix for a prior release may be required out-of-phase with th
    This is a pre-release: DO NOT check
    ```
 
-[proj-releases-new]: https://github.com/{{ cookiecutter.project_org }}/{{ cookiecutter.project_repo_name }}/releases/new
+[proj-releases-new]: https://github.com/DSACMS/codejson-core/releases/new
 -->
 
 <!---
@@ -387,7 +394,7 @@ In rare cases, a hotfix for a prior release may be required out-of-phase with th
 TODO: Documentation Example
 
 We also welcome improvements to the project documentation or to the existing
-docs. Please file an [issue]({{ cookiecutter.project_org }}/{{ cookiecutter.project_repo_name }}/issues).
+docs. Please file an [issue](DSACMS/codejson-core/issues).
 -->
 
 ## Policies

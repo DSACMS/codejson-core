@@ -1,21 +1,28 @@
-# {{ cookiecutter.project_name }}
+# codejson-core
 
-{{ cookiecutter.project_description }}
+Schema, validation, and assembly logic for code.json.
 
 ## About the Project
-<!-- TODO: Write an about statement for this project. -->
+
+`codejson-core` (`@cmsopensource/codejson-core`) is a pure, agency-agnostic TypeScript library that owns the [code.json](https://github.com/DSACMS/gov-codejson) **schema/types**, **validation**, and **assembly/merge/normalization** logic used to describe federal source code metadata. It is meant to provide logic so that consumers (Github Actions, CLI, etc.) can share one contract instead of each duplicating it.
+
+The library has zero runtime dependency on GitHub, the network, or the filesystem. Its only runtime dependencies are `zod` and `zod-validation-error`. It ships a version-pinned copy of the `gov-codejson` schema, a neutral (agency-agnostic) baseline, and a CMS variant, plus a profile factory so additional agencies can be supported without changing core.
 
 ### Project Vision
-<!-- TODO: What is the vision for this project? -->
+
+A single, authoritative, reusable source of truth for the code.json contract, so that every tool that produces or validates code.json metadata behaves identically and stays aligned with the published `gov-codejson` schema.
 
 ### Project Mission
-<!-- TODO: Write a mission statement for this project. -->
+
+To provide correct, well-tested, side-effect-free building blocks — schema, validation, and merge/normalization logic — that let federal agencies and their tooling generate and validate code.json files consistently, without reimplementing the rules each time.
 
 ### Agency Mission
-<!-- TODO: Must include since this is an agency-led project -->
+
+The Centers for Medicare & Medicaid Services (CMS) serves the public as a trusted partner and steward, dedicated to advancing health equity, expanding coverage, and improving health outcomes.
 
 ### Team Mission
-<!-- TODO: Must include since this is an agency-led project -->
+
+The Digital Service at CMS (DSACMS) and the CMS Open Source Program Office are committed to building government software in the open — licensed and structured so that anyone can download, run, and reuse it — and to fostering a welcoming open source community around it.
 
 ## Core Team
 
@@ -68,15 +75,28 @@ These guidelines outline agency-wide expectations for semantic versioning, relea
 
 ## Local Development
 
-<!--- TODO - with example below:
-This project is a monorepo with several apps. Please see the [api](./api/README.md) and [frontend](./frontend/README.md) READMEs for information on spinning up those projects locally. Also see the project [documentation](./documentation) for more info.
--->
+This project is a single TypeScript library, built and tested with [Bun](https://bun.sh) (package manager, test runner, and script runner) and `tsc` (type-check and JS/declaration emit). It targets Node ≥20 and is ESM-only.
+
+```bash
+bun install          # install dependencies
+bun test             # run the test suite
+bun run typecheck    # type-check without emitting
+bun run build        # emit ESM JS + .d.ts to dist/
+bun run generate-schema  # (maintenance) regenerate the pinned schema from gov-codejson
+```
+
+See [src/README.md](./src/README.md) for an overview of how the library is structured, how the pieces fit together, and an end-to-end usage example.
 
 ## Coding Style and Linters
 
-<!-- TODO - Add the repo's linting and code style guidelines -->
+This project uses [ESLint](https://eslint.org/) (`eslint.config.js`, with `typescript-eslint`) and [Prettier](https://prettier.io/) (`.prettierrc`) for linting and formatting.
 
-Each application has its own linting and testing guidelines. Lint and code tests are run on each commit, so linters and tests should be run locally before committing.
+```bash
+bun run lint     # lint with ESLint
+bun run format   # format with Prettier
+```
+
+Lint and code tests are run on each commit, so linters and tests should be run locally before committing.
 
 <!--
 ## Branching Model
@@ -101,7 +121,7 @@ Thank you for considering contributing to an Open Source project of the US Gover
 
 ## Community
 
-The {{ cookiecutter.project_name }} team is taking a community-first and open source approach to the product development of this tool. We believe government software should be made in the open and be built and licensed such that anyone can download the code, run it themselves without paying money to third parties or using proprietary software, and use it as they will.
+The codejson-core team is taking a community-first and open source approach to the product development of this tool. We believe government software should be made in the open and be built and licensed such that anyone can download the code, run it themselves without paying money to third parties or using proprietary software, and use it as they will.
 
 We know that we can learn from a wide variety of communities, including those who will use or will be impacted by the tool, who are experts in technology, or who have experience with similar technologies deployed in other spaces. We are dedicated to creating forums for continuous conversation and feedback to help shape the design and development of the tool.
 
@@ -123,6 +143,24 @@ If you have ideas for how we can improve or add to our capacity building efforts
 Information about terminology and acronyms used in this documentation may be found in [GLOSSARY.md](GLOSSARY.md).
 -->
 
+## AI Usage
+
+AI tools *(LLMs, coding assistants)* are welcome as part of your contribution workflow, but they don't change who's responsible for the code you submit.
+
+### Recommended uses
+
+- Gaining understanding of the existing code, or solution ideas of the issue
+- Translating or proofreading your comments or PR descriptions while keep the wording as close as possible to what you originally wrote
+
+Whenever you use AI in any of these ways, disclose it explicitly in your PR description.
+
+### Not recommended uses
+
+- External AI tooling *(bots, agents)* directly interacting with the project, including creating issues, opening PRs, or commenting on GitHub
+- Submitting AI generated code you can't explain line by line to a developer, or using AI output without fully understanding it or verifying it's the correct approach
+- Submitting a PR where the effort you put in, such as writing a prompt, is less than the effort it would take a maintainer to review it. We can already write prompts or run automated tools ourselves and doing that directly is faster and more secure than reviewing a low effort PR.
+- Using AI to increase the breadth of your contributions, such as spreading yourself across several projects at once. You provide more value by engaging deeply with one or two projects than shallowly with many.
+
 ## Policies
 
 ### Open Source Policy
@@ -141,7 +179,7 @@ For more information about our Security, Vulnerability, and Responsible Disclosu
 
 A Software Bill of Materials (SBOM) is a formal record containing the details and supply chain relationships of various components used in building software.
 
-In the spirit of [Executive Order 14028 - Improving the Nation’s Cyber Security](https://www.gsa.gov/technology/it-contract-vehicles-and-purchasing-programs/information-technology-category/it-security/executive-order-14028), a SBOM for this repository is provided here: https://github.com/{{ cookiecutter.project_org }}/{{ cookiecutter.project_repo_name }}/network/dependencies.
+In the spirit of [Executive Order 14028 - Improving the Nation’s Cyber Security](https://www.gsa.gov/technology/it-contract-vehicles-and-purchasing-programs/information-technology-category/it-security/executive-order-14028), a SBOM for this repository is provided here: https://github.com/DSACMS/codejson-core/network/dependencies.
 
 For more information and resources about SBOMs, visit: https://www.cisa.gov/sbom.
 

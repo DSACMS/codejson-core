@@ -12,7 +12,7 @@ export interface CodeJSONProfile<T extends Record<string, unknown>> {
   assemble(
     observed: Partial<T>,
     existing: T | null,
-    options?: AssembleOptions<T>,
+    options?: AssembleOptions,
   ): T;
 }
 
