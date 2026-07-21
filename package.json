@@ -1,5 +1,5 @@
 {
-  "name": "@cmsopensource/codejson-core",
+  "name": "codejson-core",
   "version": "0.1.0",
   "description": "Schema, validation, and assembly logic for code.json.",
   "repository": {

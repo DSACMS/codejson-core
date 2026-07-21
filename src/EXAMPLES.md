@@ -30,7 +30,7 @@ import {
   assembleCodeJSON,          // neutral-bound default
   CodeJSONValidationError,
   type CodeJSON,
-} from "@cmsopensource/codejson-core";
+} from "codejson-core";
 
 // 1. The CALLER acquires these — core never does I/O. Org-level content
 //    (organization, default license) lives in your data or a profile
@@ -68,7 +68,7 @@ try {
 There's no existing `code.json` yet — pass `null`. Core starts from the baseline skeleton and fills the rest from your observed data.
 
 ```ts
-import { assembleCodeJSON, type CodeJSON } from "@cmsopensource/codejson-core";
+import { assembleCodeJSON, type CodeJSON } from "codejson-core";
 
 const fresh = assembleCodeJSON(
   {
@@ -92,7 +92,7 @@ const fresh = assembleCodeJSON(
 `validateCodeJSON` is pure validation — no merging, no I/O. It returns a `string[]`; an **empty array means valid**. Perfect for a `validate` subcommand or a CI gate.
 
 ```ts
-import { validateCodeJSON } from "@cmsopensource/codejson-core";
+import { validateCodeJSON } from "codejson-core";
 
 const raw = JSON.parse(fs.readFileSync("code.json", "utf8"));
 const problems = validateCodeJSON(raw);
@@ -111,7 +111,7 @@ console.log("code.json is valid ✓");
 When you want a *typed* value out of `unknown` (e.g. after parsing JSON from an API), `isValidCodeJSON` is a TypeScript type guard: inside the `if`, the value narrows to `CodeJSON`.
 
 ```ts
-import { isValidCodeJSON, type CodeJSON } from "@cmsopensource/codejson-core";
+import { isValidCodeJSON, type CodeJSON } from "codejson-core";
 
 function loadTyped(raw: unknown): CodeJSON {
   if (isValidCodeJSON(raw)) {
@@ -130,7 +130,7 @@ Use `validateCodeJSON` when you want *why* it's invalid; use `isValidCodeJSON` w
 Pass `isArchived: true` and core sets `status` to `"Archival"` and appends `"archived"` to `tags` (once — it won't duplicate).
 
 ```ts
-import { assembleCodeJSON } from "@cmsopensource/codejson-core";
+import { assembleCodeJSON } from "codejson-core";
 
 const result = assembleCodeJSON(observed, existing, { isArchived: true });
 // result.status === "Archival"
@@ -144,7 +144,7 @@ const result = assembleCodeJSON(observed, existing, { isArchived: true });
 `date.metadataLastUpdated` is always stamped with the current time. For reproducible snapshots, inject a fixed clock via `now`.
 
 ```ts
-import { assembleCodeJSON } from "@cmsopensource/codejson-core";
+import { assembleCodeJSON } from "codejson-core";
 
 const FIXED = new Date("2026-01-01T00:00:00.000Z");
 
@@ -162,7 +162,7 @@ expect(result.date.metadataLastUpdated).toBe("2026-01-01T00:00:00.000Z");
 `assembleCodeJSON` already runs these internally, but they're exported for when you need them standalone (e.g. a migration script).
 
 ```ts
-import { filterValidFields, migrateLegacyFields } from "@cmsopensource/codejson-core";
+import { filterValidFields, migrateLegacyFields } from "codejson-core";
 
 // Drop any key that isn't part of the schema (stale/unknown fields):
 const clean = filterValidFields(rawFromDisk);
@@ -181,7 +181,7 @@ Both are pure and immutable — they return new objects and never mutate the inp
 The CMS profile bundles the CMS schema + baseline (extra fields like `fismaLevel`, `maturityModelTier`) with `validate` / `isValid` / `assemble` pre-bound. Same API surface as the default, just CMS-flavored.
 
 ```ts
-import { cmsProfile, type CMSCodeJSON } from "@cmsopensource/codejson-core";
+import { cmsProfile, type CMSCodeJSON } from "codejson-core";
 
 const result: CMSCodeJSON = cmsProfile.assemble(observed, existing, { isArchived: false });
 
@@ -203,7 +203,7 @@ cmsProfile.SCHEMA_VERSION;  // the pinned version
 Every profile is just `schema + baseline + version`. To add an agency variant, generate a schema, write a baseline skeleton, and bundle them with `createCodeJSONProfile` — no changes to core.
 
 ```ts
-import { createCodeJSONProfile } from "@cmsopensource/codejson-core";
+import { createCodeJSONProfile } from "codejson-core";
 import { CodeJSONSchema, SCHEMA_VERSION } from "./schema/my-agency.js";
 import { myAgencyBaseline } from "./baselines/my-agency.js";
 
@@ -230,7 +230,7 @@ import {
   assembleCodeJSON,
   CodeJSONValidationError,
   type CodeJSON,
-} from "@cmsopensource/codejson-core";
+} from "codejson-core";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 
 async function run() {

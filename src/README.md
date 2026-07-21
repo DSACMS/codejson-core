@@ -89,4 +89,4 @@ The schema files are **committed artifacts** — the pin. When `gov-codejson` pu
 bun run generate-schema
 ```
 
-This rewrites `schema/*.ts` (including the bumped `SCHEMA_VERSION`). Commit the result and cut a release; downstream consumers adopt the new schema by bumping their `@cmsopensource/codejson-core` dependency. There is no runtime fetch — the committed file *is* the version pin.
+This rewrites `schema/*.ts` (including the bumped `SCHEMA_VERSION`). Commit the result and cut a release; downstream consumers adopt the new schema by bumping their `codejson-core` dependency. There is no runtime fetch — the committed file *is* the version pin.
