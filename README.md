@@ -4,7 +4,7 @@ Schema, validation, and assembly logic for code.json.
 
 ## About the Project
 
-`codejson-core` (`codejson-core`) is a pure, agency-agnostic TypeScript library that owns the [code.json](https://github.com/DSACMS/gov-codejson) **schema/types**, **validation**, and **assembly/merge/normalization** logic used to describe federal source code metadata. It is meant to provide logic so that consumers (Github Actions, CLI, etc.) can share one contract instead of each duplicating it.
+`codejson-core` is a pure, agency-agnostic TypeScript library that owns the [code.json](https://github.com/DSACMS/gov-codejson) **schema/types**, **validation**, and **assembly/merge/normalization** logic used to describe federal source code metadata. It is meant to provide logic so that consumers (Github Actions, CLI, etc.) can share one contract instead of each duplicating it.
 
 The library has zero runtime dependency on GitHub, the network, or the filesystem. Its only runtime dependencies are `zod` and `zod-validation-error`. It ships a version-pinned copy of the `gov-codejson` schema, a neutral (agency-agnostic) baseline, and a CMS variant, plus a profile factory so additional agencies can be supported without changing core.
 
