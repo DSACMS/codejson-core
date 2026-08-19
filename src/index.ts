@@ -3,6 +3,7 @@ import { baselineCodeJSON } from "./baselines/neutral.js";
 import { neutralProfile } from "./profiles/neutral.js";
 import {
   filterValidFields as filterValidFieldsWith,
+  droppedFields as droppedFieldsWith,
   migrateLegacyFields,
 } from "./normalize.js";
 
@@ -20,11 +21,16 @@ export { baselineCodeJSON } from "./baselines/neutral.js";
 export const validateCodeJSON = neutralProfile.validate;
 export const isValidCodeJSON = neutralProfile.isValid;
 export const assembleCodeJSON = neutralProfile.assemble;
+export const draftCodeJSON = neutralProfile.draft;
+export { type AssembleOptions } from "./assemble.js";
 
 // ── normalization (neutral-bound; baseline pre-injected) ──────────────────
 export const filterValidFields = (
   input: Record<string, unknown>,
 ): Partial<CodeJSON> => filterValidFieldsWith(baselineCodeJSON, input);
+export const droppedFields = (
+  input: Record<string, unknown> | null,
+): string[] => droppedFieldsWith(baselineCodeJSON, input);
 export { migrateLegacyFields };
 
 // ── CMS variant (shipped preset, aliased) ─────────────────────────────────
