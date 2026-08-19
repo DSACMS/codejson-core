@@ -15,6 +15,17 @@ export function filterValidFields<T extends Record<string, unknown>>(
   return filtered as Partial<T>;
 }
 
+// the keys filterValidFields would drop so a caller can tell someone what it threw away
+export function droppedFields<T extends Record<string, unknown>>(
+  baseline: Partial<T>,
+  input: Record<string, unknown> | null,
+): string[] {
+  if (!input) return [];
+
+  const validKeys = new Set(Object.keys(baseline));
+  return Object.keys(input).filter((key) => !validKeys.has(key));
+}
+
 // reshape legacy data so it still validates. any field migration that need to happen can live here
 export function migrateLegacyFields<T extends Record<string, unknown>>(
   input: Partial<T>,

@@ -1,8 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { filterValidFields, migrateLegacyFields } from "../src/normalize.js";
+import {
+  filterValidFields,
+  droppedFields,
+  migrateLegacyFields,
+} from "../src/normalize.js";
+
+const baseline = { name: "", version: "", tags: [] as string[] };
 
 describe("filterValidFields", () => {
-  const baseline = { name: "", version: "", tags: [] as string[] };
 
   test("keeps only keys present in the baseline", () => {
     const result = filterValidFields(baseline, {
@@ -22,6 +27,22 @@ describe("filterValidFields", () => {
 
   test("returns an empty object when nothing matches", () => {
     expect(filterValidFields(baseline, { onlyUnknown: true })).toEqual({});
+  });
+});
+
+describe("droppedFields", () => {
+  test("reports exactly the keys filterValidFields removes", () => {
+    const input = { name: "keep", bogus: "drop me", anotherUnknown: 42 };
+    expect(droppedFields(baseline, input)).toEqual(["bogus", "anotherUnknown"]);
+    expect(Object.keys(filterValidFields(baseline, input))).toEqual(["name"]);
+  });
+
+  test("returns an empty array when everything is known", () => {
+    expect(droppedFields(baseline, { name: "x", version: "1" })).toEqual([]);
+  });
+
+  test("treats a missing file as nothing dropped", () => {
+    expect(droppedFields(baseline, null)).toEqual([]);
   });
 });
 
