@@ -21,11 +21,10 @@ interface DerivedView {
   date?: { created?: string; lastModified?: string; metadataLastUpdated?: string };
 }
 
-// merge then validate everything into one valid code.json
+// merge everything into one code.json. never throws meaning the result may be an incomplete draft.
 // baseline -> cleaned existing file -> freshly observed -> derived (later wins)
 // this is meant to be a pure function with no i/o
-export function assembleWith<T extends Record<string, unknown>>(
-  schema: z.ZodType<T>,
+export function mergeWith<T extends Record<string, unknown>>(
   baseline: Partial<T>,
   observed: Partial<T>,
   existing: T | null,
@@ -93,9 +92,21 @@ export function assembleWith<T extends Record<string, unknown>>(
     ...derived,
   };
 
-  // step 4: validate.
+  return result as unknown as T;
+}
+
+// merge, then require the result to be a valid, finished code.json.
+export function assembleWith<T extends Record<string, unknown>>(
+  schema: z.ZodType<T>,
+  baseline: Partial<T>,
+  observed: Partial<T>,
+  existing: T | null,
+  options: AssembleOptions = {},
+): T {
+  const result = mergeWith(baseline, observed, existing, options);
+
   const errors = validateWith(schema, result);
   if (errors.length > 0) throw new CodeJSONValidationError(errors);
 
-  return result as unknown as T;
+  return result;
 }

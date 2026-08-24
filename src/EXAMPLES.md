@@ -2,7 +2,9 @@
 
 Practical, copy-pasteable recipes for the common ways `codejson-core` gets used. For *how the library works internally* (the assembly flow, precedence rules, derived fields), see [`README.md`](./README.md).
 
-**The one thing to remember:** core is pure — it never touches the network, filesystem, or GitHub. *You* (the caller) acquire the data and handle the I/O; core merges, derives, validates, and either returns a complete `CodeJSON` or throws.
+**The one thing to remember:** core is pure — it never touches the network, filesystem, or GitHub. *You* (the caller) acquire the data and handle the I/O; core merges, derives, and validates.
+
+**Pick your entry point:** `assemble` when the output has to be a valid, finished file — it validates and throws. `draft` when the output is deliberately incomplete — same merge, no validation gate, never throws. Both are on every profile.
 
 ---
 
@@ -10,14 +12,15 @@ Practical, copy-pasteable recipes for the common ways `codejson-core` gets used.
 
 1. [Assemble a code.json (the main use case)](#1-assemble-a-codejson-the-main-use-case)
 2. [First-time generation (no existing file)](#2-first-time-generation-no-existing-file)
-3. [Validate an existing file (a CLI `validate` command)](#3-validate-an-existing-file-a-cli-validate-command)
-4. [Type-guard unknown data with `isValidCodeJSON`](#4-type-guard-unknown-data-with-isvalidcodejson)
-5. [Archived repositories](#5-archived-repositories)
-6. [Deterministic output in tests (injectable clock)](#6-deterministic-output-in-tests-injectable-clock)
-7. [Cleaning stale / legacy data by hand](#7-cleaning-stale--legacy-data-by-hand)
-8. [Using the CMS variant](#8-using-the-cms-variant)
-9. [Adding your own agency (zero core changes)](#9-adding-your-own-agency-zero-core-changes)
-10. [End-to-end: a GitHub Action](#10-end-to-end-a-github-action)
+3. [Generate a draft for a human to finish](#3-generate-a-draft-for-a-human-to-finish)
+4. [Validate an existing file (a CLI `validate` command)](#4-validate-an-existing-file-a-cli-validate-command)
+5. [Type-guard unknown data with `isValidCodeJSON`](#5-type-guard-unknown-data-with-isvalidcodejson)
+6. [Archived repositories](#6-archived-repositories)
+7. [Deterministic output in tests (injectable clock)](#7-deterministic-output-in-tests-injectable-clock)
+8. [Cleaning stale / legacy data by hand](#8-cleaning-stale--legacy-data-by-hand)
+9. [Using the CMS variant](#9-using-the-cms-variant)
+10. [Adding your own agency (zero core changes)](#10-adding-your-own-agency-zero-core-changes)
+11. [End-to-end: a GitHub Action](#11-end-to-end-a-github-action)
 
 ---
 
@@ -87,7 +90,41 @@ const fresh = assembleCodeJSON(
 
 ---
 
-## 3. Validate an existing file (a CLI `validate` command)
+## 3. Generate a draft for a human to finish
+
+A generator can only observe some of `code.json` — nothing in a repository tells you its `fismaLevel` or `maintenance`. The output is a **first draft**: correct where core could fill it in, blank where a human still has to. `assemble` would reject that (rightly — it's not a finished file), so use `draft` instead. Same merge rules, no validation gate, never throws.
+
+```ts
+import { draftCodeJSON, validateCodeJSON } from "codejson-core";
+
+// merges exactly like assembleCodeJSON, then just... returns.
+const draft = draftCodeJSON(observed, existing);
+
+// unobservable fields come back at their baseline values, present and blank:
+// draft.fismaLevel === ""   ← for a human to fill in, not an error
+
+writeFileSync("code.json", JSON.stringify(draft, null, 2) + "\n");
+
+// want to tell the human what's left? validate separately and report,
+// instead of letting assemble throw.
+const problems = validateCodeJSON(draft);
+if (problems.length > 0) {
+  console.log("Draft written. Still to complete:\n" + problems.join("\n"));
+}
+```
+
+Every baseline key survives `JSON.stringify` — no field is `undefined` — so the blanks actually reach the file the human opens. Reach for `droppedFields` here too, so stale keys removed from their file don't vanish unannounced:
+
+```ts
+import { droppedFields } from "codejson-core";
+
+const removed = droppedFields(existing);   // keys not in the schema
+if (removed.length > 0) console.log(`Removed stale fields: ${removed.join(", ")}`);
+```
+
+---
+
+## 4. Validate an existing file (a CLI `validate` command)
 
 `validateCodeJSON` is pure validation — no merging, no I/O. It returns a `string[]`; an **empty array means valid**. Perfect for a `validate` subcommand or a CI gate.
 
@@ -106,7 +143,7 @@ console.log("code.json is valid ✓");
 
 ---
 
-## 4. Type-guard unknown data with `isValidCodeJSON`
+## 5. Type-guard unknown data with `isValidCodeJSON`
 
 When you want a *typed* value out of `unknown` (e.g. after parsing JSON from an API), `isValidCodeJSON` is a TypeScript type guard: inside the `if`, the value narrows to `CodeJSON`.
 
@@ -125,7 +162,7 @@ Use `validateCodeJSON` when you want *why* it's invalid; use `isValidCodeJSON` w
 
 ---
 
-## 5. Archived repositories
+## 6. Archived repositories
 
 Pass `isArchived: true` and core sets `status` to `"Archival"` and appends `"archived"` to `tags` (once — it won't duplicate).
 
@@ -139,7 +176,7 @@ const result = assembleCodeJSON(observed, existing, { isArchived: true });
 
 ---
 
-## 6. Deterministic output in tests (injectable clock)
+## 7. Deterministic output in tests (injectable clock)
 
 `date.metadataLastUpdated` is always stamped with the current time. For reproducible snapshots, inject a fixed clock via `now`.
 
@@ -157,38 +194,46 @@ expect(result.date.metadataLastUpdated).toBe("2026-01-01T00:00:00.000Z");
 
 ---
 
-## 7. Cleaning stale / legacy data by hand
+## 8. Cleaning stale / legacy data by hand
 
 `assembleCodeJSON` already runs these internally, but they're exported for when you need them standalone (e.g. a migration script).
 
 ```ts
-import { filterValidFields, migrateLegacyFields } from "codejson-core";
+import { filterValidFields, droppedFields, migrateLegacyFields } from "codejson-core";
 
 // Drop any key that isn't part of the schema (stale/unknown fields):
 const clean = filterValidFields(rawFromDisk);
+
+// Same rule, reported instead of applied — assembly drops these silently,
+// so this is how you tell someone what went away:
+const removed = droppedFields(rawFromDisk);   // e.g. ["legacyField"]
 
 // Reshape legacy shapes so old files still validate
 // (e.g. contractNumber: string  →  contractNumber: string[]):
 const migrated = migrateLegacyFields(clean);
 ```
 
-Both are pure and immutable — they return new objects and never mutate the input.
+All three are pure and immutable — they return new values and never mutate the input.
 
 ---
 
-## 8. Using the CMS variant
+## 9. Using the CMS variant
 
-The CMS profile bundles the CMS schema + baseline (extra fields like `fismaLevel`, `maturityModelTier`) with `validate` / `isValid` / `assemble` pre-bound. Same API surface as the default, just CMS-flavored.
+The CMS profile bundles the CMS schema + baseline (extra fields like `fismaLevel`, `maturityModelTier`; the CMS organization and CC0 license default) with the whole API pre-bound. Same surface as the top-level exports, just CMS-flavored.
 
 ```ts
 import { cmsProfile, type CMSCodeJSON } from "codejson-core";
 
 const result: CMSCodeJSON = cmsProfile.assemble(observed, existing, { isArchived: false });
+const draft: CMSCodeJSON = cmsProfile.draft(observed, existing);   // never throws
 
 const problems = cmsProfile.validate(rawFromDisk);   // [] means valid
 if (cmsProfile.isValid(rawFromDisk)) {
   // rawFromDisk is narrowed to CMSCodeJSON
 }
+
+// Keyed off the CMS baseline, so CMS-only fields are NOT reported as dropped:
+cmsProfile.droppedFields(rawFromDisk);
 
 // The bundled bits are on the profile too:
 cmsProfile.schema;          // the Zod schema
@@ -196,9 +241,11 @@ cmsProfile.baseline;        // the skeleton
 cmsProfile.SCHEMA_VERSION;  // the pinned version
 ```
 
+> Reach for the profile rather than the top-level `assembleCodeJSON` / `droppedFields` when you target a variant — the top-level exports are bound to the **neutral** baseline and will strip every CMS-only field.
+
 ---
 
-## 9. Adding your own agency (zero core changes)
+## 10. Adding your own agency (zero core changes)
 
 Every profile is just `schema + baseline + version`. To add an agency variant, generate a schema, write a baseline skeleton, and bundle them with `createCodeJSONProfile` — no changes to core.
 
@@ -221,7 +268,7 @@ See [`README.md`](./README.md) for how schemas and baselines are structured.
 
 ---
 
-## 10. End-to-end: a GitHub Action
+## 11. End-to-end: a GitHub Action
 
 Putting it together — the caller owns all I/O; core is the pure validated-assembly step in the middle.
 

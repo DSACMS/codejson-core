@@ -3,7 +3,9 @@ import {
   validateCodeJSON,
   isValidCodeJSON,
   assembleCodeJSON,
+  draftCodeJSON,
   filterValidFields,
+  droppedFields,
   neutralProfile,
   cmsProfile,
   createCodeJSONProfile,
@@ -37,9 +39,22 @@ describe("public neutral-bound API", () => {
     expect(isValidCodeJSON(result)).toBe(true);
   });
 
+  test("draftCodeJSON returns an incomplete result instead of throwing", () => {
+    const draft = draftCodeJSON({ name: "half-finished" }, null);
+    expect(draft.name).toBe("half-finished");
+    expect(isValidCodeJSON(draft)).toBe(false);
+  });
+
   test("filterValidFields is pre-bound to the neutral baseline", () => {
     const filtered = filterValidFields({ name: "ok", notARealField: true });
     expect(filtered).toEqual({ name: "ok" });
+  });
+
+  test("droppedFields reports what filterValidFields would remove", () => {
+    expect(droppedFields({ name: "ok", notARealField: true })).toEqual([
+      "notARealField",
+    ]);
+    expect(droppedFields(null)).toEqual([]);
   });
 
   test("exposes the pinned schema version", () => {
@@ -62,6 +77,24 @@ describe("profiles", () => {
   test("cmsProfile rejects a document missing CMS-specific required fields", () => {
     // the neutral fixture lacks CMS-only fields, so it should not validate as CMS.
     expect(cmsProfile.validate(clone(validNeutral)).length).toBeGreaterThan(0);
+  });
+
+  test("cmsProfile.draft produces a CMS draft the CMS schema still rejects", () => {
+    const draft = cmsProfile.draft({ name: "wip" }, null);
+    expect(draft.name).toBe("wip");
+    expect(draft.organization).toBe("Centers for Medicare & Medicaid Services");
+    expect(draft.fismaLevel).toBe("" as never);
+    expect(cmsProfile.isValid(draft)).toBe(false);
+  });
+
+  test("droppedFields on a profile keys off that variant's baseline", () => {
+    // fismaLevel is CMS-only: dropped by the neutral baseline, kept by the CMS one.
+    const input = { name: "x", fismaLevel: "low", notARealField: true };
+    expect(neutralProfile.droppedFields(input)).toEqual([
+      "fismaLevel",
+      "notARealField",
+    ]);
+    expect(cmsProfile.droppedFields(input)).toEqual(["notARealField"]);
   });
 });
 

@@ -1,11 +1,14 @@
 import { type CodeJSON } from "../schema/neutral.js";
 
+// enum-typed fields sit at "" rather than undefined so they dont get dropped.
+const blankEnum = "" as never;
+
 // neutral, agency agnostic skeleton of code.json (gov-codejson base schema)
 export const baselineCodeJSON: Partial<CodeJSON> = {
   name: "",
   version: "",
   description: "",
-  status: undefined,
+  status: blankEnum,
   permissions: {
     licenses: [],
     usageType: [],
@@ -13,7 +16,7 @@ export const baselineCodeJSON: Partial<CodeJSON> = {
   },
   organization: "",
   repositoryURL: "",
-  repositoryVisibility: undefined,
+  repositoryVisibility: blankEnum,
   homepageURL: "",
   downloadURL: "",
   disclaimerURL: "",
@@ -25,7 +28,7 @@ export const baselineCodeJSON: Partial<CodeJSON> = {
     clones: 0,
   },
   languages: [],
-  maintenance: undefined,
+  maintenance: blankEnum,
   contractNumber: [],
   SBOM: "",
   relatedCode: [],

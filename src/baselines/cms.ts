@@ -1,21 +1,25 @@
 import { type CodeJSON } from "../schema/cms.js";
 
+// enum-typed fields sit at "" rather than undefined so they dont get dropped.
+const blankEnum = "" as never;
+
 // CMS variant skeleton of code.json (gov-codejson CMS schema)
 export const cmsBaselineCodeJSON: Partial<CodeJSON> = {
   name: "",
   version: "",
   description: "",
   longDescription: "",
-  status: undefined,
+  status: blankEnum,
   permissions: {
-    licenses: [],
+    // CMS repositories default to CC0; override in observed for anything else
+    licenses: [{ name: "CC0-1.0", URL: "" }],
     usageType: [],
     exemptionText: "",
   },
   organization: "Centers for Medicare & Medicaid Services",
   repositoryURL: "",
-  repositoryHost: undefined,
-  repositoryVisibility: undefined,
+  repositoryHost: blankEnum,
+  repositoryVisibility: blankEnum,
   homepageURL: "",
   downloadURL: "",
   disclaimerURL: "",
@@ -28,9 +32,9 @@ export const cmsBaselineCodeJSON: Partial<CodeJSON> = {
   },
   platforms: [],
   categories: [],
-  softwareType: undefined,
+  softwareType: blankEnum,
   languages: [],
-  maintenance: undefined,
+  maintenance: blankEnum,
   contractNumber: [],
   SBOM: "",
   relatedCode: [],
@@ -49,9 +53,9 @@ export const cmsBaselineCodeJSON: Partial<CodeJSON> = {
   feedbackMechanism: "",
   AIUseCaseID: "0",
   localisation: false,
-  repositoryType: undefined,
+  repositoryType: blankEnum,
   userInput: false,
-  fismaLevel: undefined,
+  fismaLevel: blankEnum,
   group: "",
   projects: [],
   systems: [],

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { assembleWith } from "../src/assemble.js";
+import { assembleWith, mergeWith } from "../src/assemble.js";
 import { CodeJSONSchema, type CodeJSON } from "../src/schema/neutral.js";
 import { baselineCodeJSON } from "../src/baselines/neutral.js";
 import { CodeJSONValidationError } from "../src/errors.js";
@@ -25,6 +25,16 @@ const assemble = (
   options = {},
 ) =>
   assembleWith(CodeJSONSchema, baselineCodeJSON, observed, existing, {
+    now: fixedNow,
+    ...options,
+  });
+
+const merge = (
+  observed: Partial<CodeJSON>,
+  existing: CodeJSON | null = null,
+  options = {},
+) =>
+  mergeWith(baselineCodeJSON, observed, existing, {
     now: fixedNow,
     ...options,
   });
@@ -123,5 +133,50 @@ describe("assembleWith", () => {
       );
       expect(result.tags).toEqual(["archived"]);
     });
+  });
+});
+
+describe("mergeWith", () => {
+  test("returns an incomplete draft where assembleWith throws", () => {
+    // omit maintenance -> baseline leaves it "" -> invalid, but merging doesn't care.
+    const { maintenance, ...partial } = minimalObserved;
+    void maintenance;
+
+    expect(() => assemble(partial)).toThrow(CodeJSONValidationError);
+
+    const draft = merge(partial);
+    expect(draft.maintenance).toBe("" as never);
+    expect(CodeJSONSchema.safeParse(draft).success).toBe(false);
+  });
+
+  test("leaves every unsupplied enum blank rather than absent", () => {
+    // the reason "" beats undefined: a draft is written to disk for a human to
+    // finish, and JSON.stringify would drop the keys they need to fill in.
+    const draft = merge({});
+    const roundTripped = JSON.parse(JSON.stringify(draft)) as Record<
+      string,
+      unknown
+    >;
+    expect(roundTripped.status).toBe("");
+    expect(roundTripped.repositoryVisibility).toBe("");
+    expect(roundTripped.maintenance).toBe("");
+  });
+
+  test("matches assembleWith exactly when the input is already valid", () => {
+    const observed = { ...minimalObserved, name: "same", laborHours: 12 };
+    const existing = clone(validNeutral);
+
+    expect(merge(observed, existing)).toEqual(assemble(observed, existing));
+  });
+
+  test("applies the same derived-field and archival rules", () => {
+    const draft = merge({ ...minimalObserved, tags: ["a"] }, null, {
+      isArchived: true,
+    });
+    expect(draft.feedbackMechanism).toBe("https://github.com/x/y/issues");
+    expect(draft.SBOM).toBe("https://github.com/x/y/network/dependencies");
+    expect(draft.date.metadataLastUpdated).toBe(FIXED);
+    expect(draft.status).toBe("Archival");
+    expect(draft.tags).toEqual(["a", "archived"]);
   });
 });
