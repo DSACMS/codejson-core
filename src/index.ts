@@ -44,6 +44,7 @@ export { cmsBaselineCodeJSON } from "./baselines/cms.js";
 // ── profiles + factory (add an agency, zero core changes) ─────────────────
 export { neutralProfile } from "./profiles/neutral.js";
 export { cmsProfile } from "./profiles/cms.js";
+export { profiles, type ProfileName } from "./profiles/index.js";
 export {
   createCodeJSONProfile,
   type CodeJSONProfile,
