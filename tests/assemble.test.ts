@@ -77,6 +77,15 @@ describe("assembleWith", () => {
       const result = assemble(minimalObserved, existing) as Record<string, unknown>;
       expect(result.legacyGarbage).toBeUndefined();
     });
+
+    test("drops observed keys the baseline does not define", () => {
+      const observed = {
+        ...minimalObserved,
+        repositoryHost: "github",
+      } as never;
+      const result = assemble(observed) as Record<string, unknown>;
+      expect(result).not.toHaveProperty("repositoryHost");
+    });
   });
 
   describe("derived fields", () => {

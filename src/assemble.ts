@@ -39,8 +39,14 @@ export function mergeWith<T extends Record<string, unknown>>(
       )
     : {};
 
+  // observed keys the variant doesn't define are dropped silently
+  const cleanedObserved = filterValidFields(
+    baseline,
+    observed as Record<string, unknown>,
+  );
+
   // step 2: compute the derived fields.
-  const obs = observed as unknown as DerivedView;
+  const obs = cleanedObserved as unknown as DerivedView;
   const ex = (existing ?? {}) as unknown as DerivedView;
 
   const repoURL = obs.repositoryURL ?? ex.repositoryURL ?? "";
@@ -88,7 +94,7 @@ export function mergeWith<T extends Record<string, unknown>>(
   const result = {
     ...baseline,
     ...cleanedExisting,
-    ...observed,
+    ...cleanedObserved,
     ...derived,
   };
 
