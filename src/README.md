@@ -18,11 +18,12 @@ Everything here is **pure**: no network, no filesystem, no GitHub, no `child_pro
 | `baselines/neutral.ts`, `baselines/cms.ts` | A `Partial<CodeJSON>` **skeleton** — every field present at its empty/default value (`""`, `[]`, `0`). **No field is `undefined`**, enums included: a baseline is meant to be written out and filled in, and `JSON.stringify` drops undefined-valued keys. `""` fails enum validation exactly as a missing key does, so this costs `assemble` nothing. The neutral baseline carries **zero** agency content (no organization, no default license); the CMS one carries the CMS organization and the CC0 license default. The baseline's key set also doubles as the whitelist for `filterValidFields`. |
 | `validation.ts` | `validateWith(schema, input)` → `string[]` (`[]` means valid) and `isValidWith(schema, input)` → type guard. Schema-generic: profiles bind them to a specific variant. |
 | `normalize.ts` | `filterValidFields(baseline, input)` drops any key not in the baseline (removes stale/unknown fields). `droppedFields(baseline, input)` reports the same keys instead of dropping them, for callers that need to tell someone what was thrown away. `migrateLegacyFields(input)` reshapes legacy data so it still validates (currently: `contractNumber` string → array). All pure and immutable. |
-| `assemble.ts` | The heart of the library, in two layers. `mergeWith(baseline, observed, existing, options)` merges with precedence and computes derived fields — pure, **never throws**, may return an incomplete draft. `assembleWith(schema, baseline, …)` is `mergeWith` plus a validation gate that throws `CodeJSONValidationError`. |
+| `assemble.ts` | The heart of the library, in two layers. `mergeWith(baseline, observed, existing, options)` deep-merges field by field under per-field rules, then fills in computed fields — pure, **never throws**, may return an incomplete draft. `assembleWith(schema, baseline, …)` is `mergeWith` plus a validation gate that throws `CodeJSONValidationError`. |
 | `errors.ts` | `CodeJSONValidationError` — carries a structured `.errors: string[]` plus a readable `.message`, so callers can render or hard-fail as they choose. |
 | `profile.ts` | `createCodeJSONProfile(schema, baseline, version)` bundles a variant's schema + baseline + version into one `CodeJSONProfile` object with `.validate` / `.isValid` / `.assemble` / `.draft` / `.droppedFields` pre-bound. This is how a new agency is added with **zero core changes**. |
 | `profiles/neutral.ts`, `profiles/cms.ts` | Pre-built profiles for the shipped variants. |
-| `index.ts` | The **public barrel**. Re-exports the neutral schema/baseline, a neutral-bound default API (`validateCodeJSON`, `isValidCodeJSON`, `assembleCodeJSON`, `draftCodeJSON`, `filterValidFields`, `droppedFields`), the CMS variant (aliased), both profiles, the `createCodeJSONProfile` factory, `AssembleOptions`, and `CodeJSONValidationError`. |
+| `profiles/index.ts` | The `profiles` registry (`{ neutral, cms }`) and its `ProfileName` key type, so callers can pick a profile by name. |
+| `index.ts` | The **public barrel**. Re-exports the neutral schema/baseline, a neutral-bound default API (`validateCodeJSON`, `isValidCodeJSON`, `assembleCodeJSON`, `draftCodeJSON`, `filterValidFields`, `droppedFields`), the CMS variant (aliased), both profiles, the `profiles` registry and `ProfileName`, the `createCodeJSONProfile` factory, `AssembleOptions`, and `CodeJSONValidationError`. |
 
 ---
 
@@ -46,28 +47,30 @@ Adding an agency: generate a `schema/<agency>.ts`, write a `baselines/<agency>.t
 
 `assembleWith` (exposed as `assembleCodeJSON` / `profile.assemble`) is where observed data and prior state become one valid file. It runs in four steps — the first three are `mergeWith`, the fourth is the gate that separates the two entry points:
 
-**Step 1 — Prepare the existing file.** If there's a current `code.json`, run it through `filterValidFields` (drop keys not in the baseline) then `migrateLegacyFields` (fix legacy shapes). If there's no existing file, this is `{}`.
+**Step 1 — Clean the inputs.** If there's a current `code.json`, run it through `filterValidFields` (drop keys not in the baseline) then `migrateLegacyFields` (fix legacy shapes). If there's no existing file, this is `{}`. `observed` also goes through `filterValidFields`, so keys the profile doesn't define (e.g. `repositoryHost` on neutral) are dropped silently rather than reported.
 
-**Step 2 — Compute derived fields.** Some fields aren't a simple override; they have selection logic. With `repoURL = observed.repositoryURL ?? existing.repositoryURL ?? ""`:
+**Step 2 — Deep-merge baseline, existing and observed.** Wherever any of the three is a plain object, the merge recurses into it over the union of their keys (baseline keys first, then existing, then observed, so key order is stable). Nested objects are never replaced wholesale, so a manual `permissions.licenses` survives an observed `permissions.usageType`. At each leaf the field's dotted path picks a rule:
+
+| Field path | Rule | Result |
+|---|---|---|
+| `repositoryURL`, `repositoryVisibility`, `laborHours`, `reuseFrequency.forks`, `date.created`, `date.lastModified` | **observed** | observed if set, else existing, else baseline |
+| `tags`, `reusedCode` | **union** | existing items in order, then each observed item not already present |
+| everything else, including `name` and `description` | **existing** | existing if set, else observed, else baseline |
+
+A value is **unset** when it's `undefined`, `null`, or deep-equal to the baseline value at that path. So a field left at its baseline default (`""`, `[]`, `maturityModelTier: 0`) is treated as blank and detection can fill it. Arrays are leaves: outside `tags`/`reusedCode`, an existing `languages` list wins whole, it isn't unioned.
+
+For **union**, strings match on exact equality. Objects match when their `URL` or their `name` is equal, ignoring case and empty values, so a manual `reusedCode` entry isn't duplicated by a detected one. Union keeps no record of removals: delete a detected tag or dependency by hand and the next run adds it back.
+
+**Step 3 — Fill in computed fields** on the merged result, with `repoURL = result.repositoryURL ?? ""`:
 
 | Field | Rule |
 |---|---|
-| `feedbackMechanism` | keep existing if truthy, else `` `${repoURL}/issues` `` |
-| `SBOM` | keep existing if truthy, else `` `${repoURL}/network/dependencies` `` |
-| `description` | observed if non-empty (trimmed), else existing, else `""` |
-| `tags` | observed if non-empty, else existing; if `isArchived` and `"archived"` absent, append it once |
-| `status` | set to `"Archival"` only when `isArchived` |
-| `reuseFrequency` | `forks` from observed → existing → 0; `clones` preserved from existing (callers usually can't observe clones) |
-| `date` | `created`/`lastModified` from observed → existing → `""`; `metadataLastUpdated` = `now()` (injectable clock) as ISO string |
+| `feedbackMechanism` | if empty, `` `${repoURL}/issues` `` |
+| `SBOM` | if empty, `` `${repoURL}/network/dependencies` `` |
+| `date.metadataLastUpdated` | always `now()` (injectable clock) as ISO string |
+| `status`, `tags` | only when `isArchived`: `status` becomes `"Archival"` and `"archived"` is appended to `tags` once |
 
-**Step 3 — Merge with precedence (later wins):**
-
-```
-{ ...baseline,          // 1. neutral floor — every field present
-  ...cleanedExisting,   // 2. current committed values (filtered + migrated)
-  ...observed,          // 3. freshly-acquired fields
-  ...derived }          // 4. computed fields — authoritative, applied last
-```
+Re-running the merge on its own output with the same observations gives the same document, apart from `metadataLastUpdated`.
 
 **Step 4 — Validate.** Run the result through the schema. If there are any errors, **throw** `CodeJSONValidationError` (with the structured list). Otherwise return the complete `CodeJSON`.
 
