@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { assembleWith, mergeWith } from "../src/assemble.js";
 import { CodeJSONSchema, type CodeJSON } from "../src/schema/neutral.js";
 import { baselineCodeJSON } from "../src/baselines/neutral.js";
+import { type CodeJSON as CMSCodeJSON } from "../src/schema/cms.js";
+import { cmsProfile } from "../src/profiles/cms.js";
 import { CodeJSONValidationError } from "../src/errors.js";
 import { validNeutral, clone } from "./fixtures.js";
 
@@ -57,12 +59,12 @@ describe("assembleWith", () => {
     expect(result.date.metadataLastUpdated).toBe(FIXED);
   });
 
-  describe("field precedence (baseline < existing < observed)", () => {
-    test("observed overrides existing for plain fields", () => {
+  describe("field precedence", () => {
+    test("observed overrides existing for observed fields", () => {
       const existing = clone(validNeutral);
-      existing.name = "old name";
-      const result = assemble({ ...minimalObserved, name: "new name" }, existing);
-      expect(result.name).toBe("new name");
+      existing.repositoryURL = "https://github.com/old/repo";
+      const result = assemble(minimalObserved, existing);
+      expect(result.repositoryURL).toBe("https://github.com/x/y");
     });
 
     test("existing supplies fields the observed input omits", () => {
@@ -76,6 +78,15 @@ describe("assembleWith", () => {
       const existing = { ...clone(validNeutral), legacyGarbage: "x" } as never;
       const result = assemble(minimalObserved, existing) as Record<string, unknown>;
       expect(result.legacyGarbage).toBeUndefined();
+    });
+
+    test("drops observed keys the baseline does not define", () => {
+      const observed = {
+        ...minimalObserved,
+        repositoryHost: "github",
+      } as never;
+      const result = assemble(observed) as Record<string, unknown>;
+      expect(result).not.toHaveProperty("repositoryHost");
     });
   });
 
@@ -178,5 +189,150 @@ describe("mergeWith", () => {
     expect(draft.date.metadataLastUpdated).toBe(FIXED);
     expect(draft.status).toBe("Archival");
     expect(draft.tags).toEqual(["a", "archived"]);
+  });
+});
+
+describe("merge rules (cms)", () => {
+  const cmsMerge = (
+    existing: Record<string, unknown>,
+    observed: Record<string, unknown>,
+    options = {},
+  ) =>
+    cmsProfile.draft(
+      observed as Partial<CMSCodeJSON>,
+      existing as CMSCodeJSON,
+      { now: fixedNow, ...options },
+    );
+
+  const mit = { name: "MIT" as const, URL: "https://example.com/license" };
+  const uswds = { name: "uswds", URL: "https://github.com/uswds/uswds" };
+  const manualDep = { name: "internal-lib", URL: "https://example.com/lib" };
+
+  test("keeps an existing license while observed fills usageType", () => {
+    const result = cmsMerge(
+      { permissions: { licenses: [mit], usageType: [], exemptionText: "" } },
+      { permissions: { usageType: ["openSource"] } },
+    );
+    expect(result.permissions).toEqual({
+      licenses: [mit],
+      usageType: ["openSource"],
+      exemptionText: "",
+    });
+  });
+
+  test("fills nested keys missing from the existing file", () => {
+    const result = cmsMerge({ permissions: { licenses: [mit] } }, {});
+    expect(result.permissions).toEqual({
+      licenses: [mit],
+      usageType: [],
+      exemptionText: "",
+    });
+  });
+
+  test("keeps existing languages", () => {
+    const result = cmsMerge(
+      { languages: ["TypeScript", "HCL"] },
+      { languages: ["TypeScript"] },
+    );
+    expect(result.languages).toEqual(["TypeScript", "HCL"]);
+  });
+
+  test("unions manual tags with observed topics", () => {
+    const result = cmsMerge({ tags: ["manual-tag"] }, { tags: ["topic"] });
+    expect(result.tags).toEqual(["manual-tag", "topic"]);
+  });
+
+  test("keeps a manual name", () => {
+    const result = cmsMerge(
+      { name: "Pretty Project Name" },
+      { name: "pretty-project" },
+    );
+    expect(result.name).toBe("Pretty Project Name");
+  });
+
+  test("keeps a manual description", () => {
+    const result = cmsMerge(
+      { description: "Manual" },
+      { description: "From GitHub" },
+    );
+    expect(result.description).toBe("Manual");
+  });
+
+  test("fills a blank description from observed", () => {
+    const result = cmsMerge(
+      { description: "" },
+      { description: "From GitHub" },
+    );
+    expect(result.description).toBe("From GitHub");
+  });
+
+  test("takes laborHours and forks from observed and keeps the rest", () => {
+    const result = cmsMerge(
+      {
+        laborHours: 500,
+        reuseFrequency: { forks: 3, clones: 40, downloads: 7 },
+      },
+      { laborHours: 812, reuseFrequency: { forks: 9 } },
+    );
+    expect(result.laborHours).toBe(812);
+    expect(result.reuseFrequency).toEqual({
+      forks: 9,
+      clones: 40,
+      downloads: 7,
+    });
+  });
+
+  test("replaces a value still at its baseline default", () => {
+    const result = cmsMerge({ maturityModelTier: 0 }, { maturityModelTier: 3 });
+    expect(result.maturityModelTier).toBe(3);
+  });
+
+  test("keeps a value that differs from the baseline default", () => {
+    const result = cmsMerge({ maturityModelTier: 2 }, { maturityModelTier: 3 });
+    expect(result.maturityModelTier).toBe(2);
+  });
+
+  test("does not append reusedCode that matches an existing entry", () => {
+    const result = cmsMerge(
+      { reusedCode: [uswds, manualDep] },
+      { reusedCode: [{ ...uswds, name: "USWDS" }] },
+    );
+    expect(result.reusedCode).toEqual([uswds, manualDep]);
+  });
+
+  test("merging its own output again changes only metadataLastUpdated", () => {
+    const observed = {
+      name: "pretty-project",
+      repositoryURL: "https://github.com/x/y",
+      laborHours: 812,
+      reuseFrequency: { forks: 9 },
+      tags: ["topic"],
+      reusedCode: [uswds],
+      maturityModelTier: 3,
+    };
+    const first = cmsMerge(
+      { name: "Pretty Project Name", tags: ["manual-tag"] },
+      observed,
+    );
+    const later = "2027-01-01T00:00:00.000Z";
+    const second = cmsMerge(first, observed, { now: () => new Date(later) });
+
+    expect(second.date.metadataLastUpdated).toBe(later);
+    expect(first).toEqual({
+      ...second,
+      date: { ...second.date, metadataLastUpdated: FIXED },
+    });
+  });
+
+  test("archiving sets Archival status and adds the archived tag once", () => {
+    const first = cmsMerge(
+      { tags: ["manual-tag"] },
+      { tags: ["topic"] },
+      { isArchived: true },
+    );
+    const second = cmsMerge(first, { tags: ["topic"] }, { isArchived: true });
+
+    expect(second.status).toBe("Archival");
+    expect(second.tags).toEqual(["manual-tag", "topic", "archived"]);
   });
 });

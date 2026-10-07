@@ -8,6 +8,7 @@ import {
   droppedFields,
   neutralProfile,
   cmsProfile,
+  profiles,
   createCodeJSONProfile,
   SCHEMA_VERSION,
   CMS_SCHEMA_VERSION,
@@ -95,6 +96,14 @@ describe("profiles", () => {
       "notARealField",
     ]);
     expect(cmsProfile.droppedFields(input)).toEqual(["notARealField"]);
+  });
+});
+
+describe("profiles registry", () => {
+  test("holds the neutral and cms profiles by name", () => {
+    expect(Object.keys(profiles)).toEqual(["neutral", "cms"]);
+    expect(profiles.neutral).toBe(neutralProfile);
+    expect(profiles.cms).toBe(cmsProfile);
   });
 });
 
